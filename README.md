@@ -118,7 +118,3 @@ region summary's `小計`.
   the figure grows as new hotels open.
 - Data source & terms: Tourism Administration, MOTC (Taiwan). Please observe the
   provider's open-data / copyright terms when redistributing.
-
-## License
-
-MIT

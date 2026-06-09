@@ -17,7 +17,7 @@ Source listing: <https://admin.taiwan.net.tw/businessinfo/FilePage?a=10425>
 
 ```r
 # install.packages("remotes")
-remotes::install_github("yyliou/twhotelpanel")
+remotes::install_github("yyliou/hotel")
 ```
 
 Dependencies:

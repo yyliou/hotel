@@ -25,5 +25,5 @@
   <line x1="46" y1="121" x2="127" y2="121" stroke="#e0c2d2" stroke-width="2" stroke-linecap="round" opacity="0.7"/>
 
   <!-- name -->
-  <text x="86.5" y="142" text-anchor="middle" font-family="Georgia, 'Times New Roman', serif" font-weight="bold" font-size="25" fill="#ffffff">twhotel</text>
+  <text x="86.5" y="147" text-anchor="middle" font-family="Palatino, 'Palatino Linotype', 'Book Antiqua', Georgia, serif" font-weight="bold" font-size="25" fill="#ffffff">twhotel</text>
 </svg>

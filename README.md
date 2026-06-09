@@ -8,6 +8,12 @@ combines them into one tidy panel — ready for empirical / panel analysis.
 
 Source listing: <https://admin.taiwan.net.tw/businessinfo/FilePage?a=10425>
 
+> [!WARNING]
+> **Only data from June 2020 (`202006`) onward is stable.** Earlier reports use
+> inconsistent workbook layouts and reporting conventions, so values before
+> `202006` may be incomplete or misaligned. For reliable panel analysis, set
+> `start_ym = 202006` (or later) and treat anything earlier as provisional.
+
 The package gives you five functions:
 
 | Function              | Purpose                                                                 |

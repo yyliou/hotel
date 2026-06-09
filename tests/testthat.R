@@ -1,3 +1,3 @@
 library(testthat)
-library(twhotelpanel)
-test_check("twhotelpanel")
+library(twhotel)
+test_check("twhotel")

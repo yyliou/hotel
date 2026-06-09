@@ -1,0 +1,15 @@
+# caches & generated data
+htp_cache/
+*.csv
+
+# R / build artifacts
+.Rproj.user/
+.Rhistory
+.RData
+.Ruserdata
+*.Rproj
+..Rcheck/
+*.tar.gz
+
+# macOS
+.DS_Store

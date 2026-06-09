@@ -1,34 +1,29 @@
-Package: twhotelpanel
-Title: Build a Panel Dataset from Taiwan Tourist Hotel Monthly Reports
+Package: twhotel
+Title: Taiwan Tourist-Hotel Monthly Operating Statistics as Panel Data
 Version: 0.1.0
 Authors@R:
-    person("Liou", "Yuyou", email = "yuyou.liou@gmail.com", role = c("aut", "cre"))
-Description: Constructs a hotel-by-month panel dataset from the monthly
-    operating-statistics reports of Taiwan's Tourism Administration (series
-    "Tourist Hotel Operating Statistics", 觀光旅館營運統計). The package crawls
-    the official file listing, downloads the monthly workbooks, parses the
-    per-hotel operating tables, and assembles them into a tidy panel for
-    empirical analysis. The source listing is available at
+    person("Yuyou", "Liou", email = "yuyou.liou@gmail.com", role = c("aut", "cre"))
+Description: Scrapes the Taiwan Tourism Administration "Tourist Hotel Operating
+    Statistics" (觀光旅館營運統計) file listing, downloads the monthly XLSX
+    reports, parses the per-hotel operations and guest tables, and combines them
+    into a tidy hotel-by-month panel dataset for empirical analysis. The source
+    listing is at
     <https://admin.taiwan.net.tw/businessinfo/FilePage?a=10425>.
 License: MIT + file LICENSE
 Encoding: UTF-8
-LazyData: true
 Depends:
     R (>= 4.1.0)
 Imports:
-    httr2,
-    rvest,
-    xml2,
-    readxl,
+    cli,
     dplyr,
-    tidyr,
-    tidyselect,
-    stringr,
-    purrr,
+    httr2,
     readr,
-    tibble,
-    rlang,
-    cli
+    readxl,
+    rvest,
+    stringr,
+    tibble
 Suggests:
     testthat (>= 3.0.0)
-RoxygenNote: 7.3.1
+URL: https://github.com/yyliou/hotel
+BugReports: https://github.com/yyliou/hotel/issues
+Config/roxygen2/version: 8.0.0

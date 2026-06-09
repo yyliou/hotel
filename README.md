@@ -1,140 +1,124 @@
-# twhotelpanel
+# twhotel <img src="man/figures/logo.png" align="right" height="138" alt="twhotel hex logo" />
 
-An R package that constructs a **hotel-by-month panel dataset** from the monthly
-operating-statistics reports published by Taiwan's Tourism Administration
-(交通部觀光署), series *Tourist Hotel Operating Statistics*
-(觀光旅館營運統計). The package automates the full pipeline: it crawls the
-official file listing, downloads the monthly workbooks, parses the per-hotel
-operating tables, and assembles them into a single tidy panel suitable for
-empirical analysis. The output is written as UTF-8 (BOM) CSV for direct use in
-Excel, R, Stata, or Python.
+Build a **hotel-by-month panel dataset** from the Taiwan Tourism Administration
+(交通部觀光署) monthly series *Tourist Hotel Operating Statistics*
+(觀光旅館營運統計). The package crawls the official file listing, downloads the
+monthly workbooks, parses the per-hotel **operations** and **guest** tables, and
+combines them into one tidy panel — ready for empirical / panel analysis.
 
 Source listing: <https://admin.taiwan.net.tw/businessinfo/FilePage?a=10425>
 
----
+The package gives you five functions:
 
-## Installation
+| Function              | Purpose                                                                 |
+| --------------------- | ----------------------------------------------------------------------- |
+| `htp_list_reports()`  | 月報清單 — enumerate every downloadable report (period, format, id, url)   |
+| `htp_download()`      | 下載 — fetch one report by id, with on-disk caching                       |
+| `htp_inspect()`       | 檢視版面 — dump a workbook's raw layout (for calibration)                  |
+| `htp_parse_report()`  | 解析單檔 — parse one workbook into tidy hotel-month rows                    |
+| `htp_build_panel()`   | 組 panel — the full pipeline: list → download → parse → bind → CSV        |
+
+## Install
 
 ```r
 # install.packages("remotes")
 remotes::install_github("yyliou/hotel")
 ```
 
-Dependencies:
-
-```r
-install.packages(c("httr2", "rvest", "xml2", "readxl", "dplyr", "tidyr",
-                   "stringr", "purrr", "readr", "tibble", "rlang", "cli"))
-```
-
+Imports `httr2`, `rvest`, `readxl`, `dplyr`, `stringr`, `tibble`, `readr`, `cli`.
 R (>= 4.1) is required (the package uses the native `|>` pipe).
 
----
-
-## Quick start
+The functions carry roxygen comments but the `man/*.Rd` help pages aren't checked
+in. To build them (and pass `R CMD check`), run once:
 
 ```r
-library(twhotelpanel)
+# install.packages("roxygen2")
+roxygen2::roxygenise()    # or devtools::document()
+```
 
-# 1. Enumerate the available reports (XLSX variants by default).
-reports <- htp_list_reports()
-head(reports)
+## 1. List available reports
 
-# 2. Build the panel for a chosen period and write it to CSV.
+```r
+library(twhotel)
+
+reports <- htp_list_reports()          # XLSX variants by default
+head(reports[, c("period", "year", "month", "file_id")])
+```
+
+Returns one row per downloadable file with `period` (e.g. `"202512"` or a range
+like `"202501-12"`), `period_type` (`"monthly"` / `"cumulative"`), `year`,
+`month`, `format`, `file_id`, and `url`. Titles in older Republic-of-China year
+form (e.g. `104年12月`) are converted to the Gregorian calendar automatically.
+
+## 2. Build the panel
+
+```r
 panel <- htp_build_panel(
-  start_ym = 202301,   # inclusive lower bound, YYYYMM
-  end_ym   = 202512,   # inclusive upper bound, YYYYMM
+  start_ym = 202301,    # inclusive lower bound, YYYYMM
+  end_ym   = 202512,    # inclusive upper bound, YYYYMM
   out_csv  = "tourist_hotel_panel.csv"
 )
-
-# Either bound may be omitted (NULL) to leave that side unrestricted.
 ```
 
-Each row of the resulting panel corresponds to one hotel observed in one month.
-Variables (after standardization):
+Either bound may be omitted (`NULL`) to leave that side open. Only **single-month**
+files are used; cumulative range files (e.g. `202401-12`) are skipped so months
+are never double-counted. Downloads are cached under `htp_cache/`, so re-runs are
+fast and the panel stays reproducible against the original workbooks. The CSV is
+written as UTF-8 with a byte-order mark, so Excel opens it without mojibake.
 
-| Variable | Definition |
-|---|---|
-| `year`, `month` | Calendar year (Gregorian) and month of the observation |
-| `hotel_type` | `international` (國際觀光旅館) or `standard` (一般觀光旅館) |
-| `region` | Administrative region, propagated from group-header rows |
-| `hotel_name` | Name of the establishment |
-| `rooms_available` | Number of guest rooms available |
-| `rooms_occupied` | Number of rooms occupied |
-| `occupancy_rate` | Room occupancy rate |
-| `avg_room_rate` | Average daily room rate (NT$) |
-| `room_revenue` | Room revenue |
-| `fnb_revenue` | Food-and-beverage revenue |
-| `other_revenue` | Other revenue |
-| `total_revenue` | Total operating revenue |
-| `guests` | Number of guests accommodated |
-| `employees` | Number of employees |
-| `sheet`, `source_file` | Provenance: originating worksheet and source filename |
+Each row is one hotel in one month. Columns:
 
----
+**Identity** — `year`, `month`, `region` (地區), `hotel_type`
+(`international` 國際 / `standard` 一般), `hotel_name`, `hotel_name_en`.
 
-## Calibrating the column mapping (please read)
+**Operations** — `rooms_available` (房間數), `rooms_occupied` (客房住用數),
+`occupancy_rate` (住用率, a fraction), `avg_room_rate` (平均房價),
+`room_revenue` (房租收入), `fnb_revenue` (餐飲收入),
+`other_revenue` (= total − room − F&B), `total_revenue` (總營業收入).
 
-The header wording of these government workbooks changes incrementally across
-years, and the package was authored without direct network access to the source
-site, so the column-to-variable assignment in `htp_parse_report()` is a
-**best-effort, user-configurable heuristic** rather than a verified mapping.
-Before relying on the panel, inspect the actual layout of one workbook and
-adjust the mapping if necessary:
+**Employees by department** — `emp_room_*`, `emp_fnb_*`, `emp_admin_*`,
+`emp_other_*` (each `_m` 男 / `_f` 女 / `_total` 人數) and `emp_m` / `emp_f` /
+`employees` (員工合計).
+
+**Guests** — `guests_fit` (個別), `guests_group` (團體), `guests_total`, plus 28
+nationalities/regions: `guests_domestic` (本國), `guests_china`, `guests_japan`,
+`guests_korea`, `guests_hk_macao`, `guests_singapore`, `guests_malaysia`,
+`guests_thailand`, `guests_indonesia`, `guests_vietnam`, `guests_philippines`,
+`guests_brunei`, `guests_myanmar`, `guests_laos`, `guests_cambodia`,
+`guests_india`, `guests_middle_east`, `guests_russia`, `guests_usa`,
+`guests_canada`, `guests_latin_america`, `guests_uk`, `guests_europe_other`,
+`guests_anz`, `guests_africa`, `guests_other`.
+
+Pass `htp_parse_report(..., guests = FALSE)` (or use it directly) if you only
+want the operations columns.
+
+## 3. Calibrating / inspecting
+
+The parser targets the current workbook layout (a single `Sheet1` containing a
+region-summary table, then per-region blocks of individual hotels for operations,
+then a second per-hotel section for guests by nationality). If a future file
+changes shape, inspect it and adjust:
 
 ```r
-# Download one file and examine its raw layout.
-path   <- htp_download(reports$file_id[1])
-layout <- htp_inspect(path)        # leading rows of each worksheet
-layout[["國際觀光旅館"]]            # observe the actual header wording
-attr(layout[[1]], "header_row")    # the inferred header-row index
-
-# The column map: keys are output variables, values are header-matching regexes.
-cm <- htp_default_colmap()
-cm$avg_room_rate <- "平均房價|平均實收房價"   # adjust to the observed wording
-cm$total_revenue <- "營業收入合計|總收入"
-
-panel <- htp_build_panel(start_ym = 202401, colmap = cm)
+path <- htp_download(reports$file_id[1])
+lay  <- htp_inspect(path)        # leading rows of each worksheet
+lay[[1]]
 ```
 
-The `hotel_sheets` argument of `htp_parse_report()` (which worksheets contain
-per-hotel detail) can likewise be overridden; it defaults to the regex
-`國際觀光旅館|一般觀光旅館|觀光旅館`.
+The hotel type comes from the `*` prefix the source uses for 一般 (standard)
+hotels; region is recovered by matching each block's `總計` total-revenue to the
+region summary's `小計`.
 
----
+## Notes
 
-## Function reference
+- Region totals reconcile with the report's own grand totals, and each hotel's
+  `guests_total` equals FIT + group equals the sum across nationalities — these
+  identities were checked against a real monthly file.
+- A monthly report yields roughly 116 hotels (≈ 71 international + 45 standard);
+  the figure grows as new hotels open.
+- Data source & terms: Tourism Administration, MOTC (Taiwan). Please observe the
+  provider's open-data / copyright terms when redistributing.
 
-- `htp_list_reports(formats = "XLSX")` — crawls all listing pages and returns,
-  for each file, its `period`, `year`, `month`, `format`, `file_id`, and `url`.
-- `htp_download(file_id, dest_dir = "htp_cache")` — downloads a file by id, with
-  on-disk caching (existing files are not re-fetched).
-- `htp_inspect(path)` — dumps the raw layout of each worksheet for calibration.
-- `htp_parse_report(path, year, month, colmap =, hotel_sheets =)` — parses a
-  single workbook into tidy hotel-month rows.
-- `htp_build_panel(start_ym, end_ym, out_csv =)` — runs the complete pipeline.
-- `roc_to_ad("115-06-09")` — converts a Republic-of-China (Minguo) date to the
-  Gregorian calendar (115 → 2026).
+## License
 
----
-
-## Design notes
-
-- **Cumulative files** (e.g. `202401-12`, `202601-03`) are **excluded by
-  default**; only single-month files (`period_type == "monthly"`) enter the
-  panel, which prevents double counting of months.
-- Network requests use a descriptive user agent, automatic retries, and a
-  configurable `throttle` delay, and downloads are cached to limit load on the
-  source server.
-- Aggregate rows (subtotals, totals, and averages) are removed automatically, so
-  only individual-hotel observations are retained.
-- Output is written as UTF-8 with a byte-order mark, allowing Excel to open the
-  CSV without character-encoding errors.
-
-## Reproducibility and citation
-
-The cache directory (`htp_cache/` by default) retains every downloaded source
-file, so a constructed panel can be reproduced and audited against the original
-workbooks. When using these data, cite the Tourism Administration, Ministry of
-Transportation and Communications (Taiwan) as the source and observe the
-applicable open-data and copyright terms.
+MIT

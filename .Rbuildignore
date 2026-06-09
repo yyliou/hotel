@@ -1,0 +1,10 @@
+^make-logo\.R$
+^HEX-STICKER-GUIDE\.md$
+^man/figures/logo\.svg$
+^\.gitattributes$
+^\.git$
+^htp_cache$
+^.*\.csv$
+^.*\.Rproj$
+^\.Rproj\.user$
+^\.DS_Store$

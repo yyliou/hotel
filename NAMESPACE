@@ -1,0 +1,13 @@
+# Generated manually (no roxygen run required)
+
+export(htp_list_reports)
+export(htp_download)
+export(htp_inspect)
+export(htp_parse_report)
+export(htp_build_panel)
+export(htp_default_colmap)
+export(roc_to_ad)
+
+import(rlang)
+importFrom(stats, setNames)
+importFrom(utils, head, tail)

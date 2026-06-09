@@ -1,0 +1,34 @@
+Package: twhotelpanel
+Title: Build a Panel Dataset from Taiwan Tourist Hotel Monthly Reports
+Version: 0.1.0
+Authors@R:
+    person("Liou", "Yuyou", email = "yuyou.liou@gmail.com", role = c("aut", "cre"))
+Description: Constructs a hotel-by-month panel dataset from the monthly
+    operating-statistics reports of Taiwan's Tourism Administration (series
+    "Tourist Hotel Operating Statistics", 觀光旅館營運統計). The package crawls
+    the official file listing, downloads the monthly workbooks, parses the
+    per-hotel operating tables, and assembles them into a tidy panel for
+    empirical analysis. The source listing is available at
+    <https://admin.taiwan.net.tw/businessinfo/FilePage?a=10425>.
+License: MIT + file LICENSE
+Encoding: UTF-8
+LazyData: true
+Depends:
+    R (>= 4.1.0)
+Imports:
+    httr2,
+    rvest,
+    xml2,
+    readxl,
+    dplyr,
+    tidyr,
+    tidyselect,
+    stringr,
+    purrr,
+    readr,
+    tibble,
+    rlang,
+    cli
+Suggests:
+    testthat (>= 3.0.0)
+RoxygenNote: 7.3.1

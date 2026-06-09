@@ -1,30 +1,32 @@
 # =============================================================================
-# twhotel — internal implementation. Dependencies are declared in the package
-# NAMESPACE (import dplyr/stringr; importFrom httr2/rvest/readxl/...), so the
-# bare function calls below resolve inside the package namespace. See
-# R/twhotel-package.R for the import roxygen tags.
+# hotel_panel.R  —  standalone script version (no package install needed)
+#
+# Usage:
+#   source("hotel_panel.R")        # defines the functions in your environment
+#   reports <- htp_list_reports()  # then call them directly
+#
+# Edit + re-source freely while debugging. This is the same logic as the
+# package, flattened to top-level functions.
 # =============================================================================
+
+library(httr2)
+library(rvest)
+library(xml2)
+library(readxl)
+library(dplyr)
+library(stringr)
+library(tibble)
+library(readr)
+library(cli)
 
 # --- constants ---------------------------------------------------------------
 .htp_base    <- "https://admin.taiwan.net.tw"
 .htp_listing <- "https://admin.taiwan.net.tw/businessinfo/FilePage?a=10425"
 .htp_attfile <- "https://admin.taiwan.net.tw/fapi/AttFile?type=AttFile&id=%s"
-.htp_ua      <- "twhotel R package (https://github.com/yyliou/hotel)"
+.htp_ua      <- "twhotelpanel R script (contact: yuyou.liou@gmail.com)"
 
 # --- helpers -----------------------------------------------------------------
 
-#' Convert a Republic-of-China (Minguo) year to the Gregorian calendar
-#'
-#' ROC year + 1911 = AD year. Accepts the dotted form used on the source site
-#' (e.g. `"115-06-09"`) or a bare ROC year.
-#'
-#' @param x Character vector of ROC dates (`"115-06-09"`) or years (`"115"`).
-#' @param full If `TRUE`, return `"YYYY-MM-DD"`; otherwise the AD year (integer).
-#' @return Integer AD year (default) or `"YYYY-MM-DD"` character.
-#' @examples
-#' roc_to_ad("115-06-09")            # 2026
-#' roc_to_ad("115-06-09", full = TRUE)
-#' @export
 roc_to_ad <- function(x, full = FALSE) {
   x <- as.character(x)
   parts <- str_match(x, "^\\s*(\\d{1,3})(?:-(\\d{1,2})-(\\d{1,2}))?")
@@ -147,24 +149,6 @@ roc_to_ad <- function(x, full = FALSE) {
     filter(!is.na(file_id))
 }
 
-#' List every available monthly hotel-operation report
-#'
-#' Crawls all pages of the Tourism Administration listing
-#' (`FilePage?a=10425&P=1..N`) and returns one row per downloadable file.
-#'
-#' @param formats File format(s) to keep, e.g. `"XLSX"` (default), `"ODS"`,
-#'   `"PDF"`. Set `NULL` to keep all.
-#' @param max_pages Optional cap on listing pages to crawl (default: all).
-#' @param throttle Seconds to pause between page requests.
-#' @param verbose Print progress via \pkg{cli}.
-#' @return A tibble with `title`, `period`, `period_type`
-#'   (`"monthly"`/`"cumulative"`), `year`, `month`, `format`, `file_id`, `url`.
-#' @examples
-#' \dontrun{
-#' reports <- htp_list_reports()
-#' subset(reports, period_type == "monthly")
-#' }
-#' @export
 htp_list_reports <- function(formats = "XLSX", max_pages = NULL,
                              throttle = 0.5, verbose = TRUE) {
   formats <- toupper(formats)
@@ -188,19 +172,6 @@ htp_list_reports <- function(formats = "XLSX", max_pages = NULL,
 
 # --- download ----------------------------------------------------------------
 
-#' Download one report file by its AttFile id
-#'
-#' @param file_id The numeric AttFile id (from [htp_list_reports()]).
-#' @param dest_dir Cache directory (created if needed).
-#' @param ext File extension for the saved file (default `"xlsx"`).
-#' @param overwrite Re-download even if a cached copy exists.
-#' @param throttle Seconds to pause before the request.
-#' @return The local file path (invisibly on a cache hit).
-#' @examples
-#' \dontrun{
-#' p <- htp_download(htp_list_reports()$file_id[1])
-#' }
-#' @export
 htp_download <- function(file_id, dest_dir = "htp_cache", ext = "xlsx",
                          overwrite = FALSE, throttle = 0.5) {
   file_id <- as.character(file_id)
@@ -316,16 +287,6 @@ htp_download <- function(file_id, dest_dir = "htp_cache", ext = "xlsx",
   NA_integer_
 }
 
-#' Inspect the raw layout of a downloaded workbook
-#'
-#' Reads every worksheet as plain text and returns the leading rows, with the
-#' guessed header-row index in attribute `"header_row"`. Useful for calibrating
-#' the parser if the official format changes.
-#'
-#' @param path Path to a downloaded `.xlsx` file.
-#' @param n Number of leading rows to return per sheet.
-#' @return A named list (one element per sheet) of character tibbles.
-#' @export
 htp_inspect <- function(path, n = 25) {
   sheets <- excel_sheets(path)
   out <- lapply(sheets, function(s) {
@@ -443,20 +404,6 @@ htp_inspect <- function(path, n = 25) {
   other_revenue = numeric(), total_revenue = numeric(),
   employees = numeric(), source_file = character())
 
-#' Parse one monthly report into tidy hotel-by-month rows
-#'
-#' Extracts the per-hotel operations section (rooms, occupancy, average room
-#' rate, room/F&B/other/total revenue, and employees by department) and, when
-#' `guests = TRUE`, joins the per-hotel guest counts (by booking type and
-#' nationality) from the second section.
-#'
-#' @param path Path to a downloaded `.xlsx` file.
-#' @param year,month Integer period stamped on every row. If `NULL`, inferred
-#'   from the cached file name.
-#' @param guests If `TRUE` (default), also parse and join the guest section.
-#' @param verbose Emit warnings about unparsable sheets.
-#' @return A tibble, one row per hotel-month.
-#' @export
 htp_parse_report <- function(path, year = NULL, month = NULL,
                              guests = TRUE, verbose = TRUE) {
   if (is.null(year) || is.null(month)) {
@@ -490,27 +437,6 @@ htp_parse_report <- function(path, year = NULL, month = NULL,
 
 # --- pipeline ----------------------------------------------------------------
 
-#' Build the full hotel-by-month panel
-#'
-#' End-to-end pipeline: list reports, filter by date, download, parse, bind into
-#' one panel, and (optionally) write a UTF-8 (BOM) CSV. Only single-month files
-#' are used (cumulative range files are skipped to avoid double counting).
-#'
-#' @param start_ym,end_ym Inclusive period bounds as `YYYYMM` integers
-#'   (e.g. `202301`, `202512`). `NULL` leaves that side unbounded.
-#' @param out_csv Path to write the panel (UTF-8 with BOM). `NULL` to skip.
-#' @param cache_dir Directory for downloaded source files.
-#' @param formats File format to download/parse (default `"XLSX"`).
-#' @param reports Optional pre-fetched [htp_list_reports()] tibble.
-#' @param overwrite Re-download cached files.
-#' @param throttle Seconds between network requests.
-#' @param verbose Progress messages.
-#' @return A tibble: the combined panel (also written to `out_csv`).
-#' @examples
-#' \dontrun{
-#' panel <- htp_build_panel(202301, 202512, out_csv = "tourist_hotel_panel.csv")
-#' }
-#' @export
 htp_build_panel <- function(start_ym = NULL, end_ym = NULL,
                             out_csv = "tourist_hotel_panel.csv",
                             cache_dir = "htp_cache", formats = "XLSX",
@@ -546,3 +472,5 @@ htp_build_panel <- function(start_ym = NULL, end_ym = NULL,
   }
   panel
 }
+
+cli_inform("hotel_panel.R loaded. Try: reports <- htp_list_reports()")

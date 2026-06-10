@@ -1,6 +1,6 @@
-# twhotel <img src="man/figures/logo.png" align="right" height="139" alt="twhotel hex logo" />
+# twhotel 
 
-## 1. Overview
+## 1. Overview <img src="man/figures/logo.png" align="right" height="139" alt="twhotel hex logo" />
 
 `twhotel` builds a **hotel-by-month panel dataset** from the Taiwan Tourism
 Administration (交通部觀光署) monthly series *Tourist Hotel Operating Statistics*
